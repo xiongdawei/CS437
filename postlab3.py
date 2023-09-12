@@ -1,5 +1,6 @@
 import time
 import datetime
+import math
 
 import numpy as np
 import time
@@ -7,6 +8,7 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import CircularOutput
 from libcamera import controls
+from sense_hat import SenseHat
 
 from gtts import gTTS
 import os
@@ -32,12 +34,18 @@ picam2.preview_configuration.controls.FrameRate=30 ## set the number of frames p
 picam2.configure("preview")
 ## 3 types of configurations are possible: preview is for grabbing frames from picamera and showing them, video is for grabbing frames and recording and images for capturing still images.
 
+sense = SenseHat()
+sense.clear()
+pressure = sense.get_pressure()
+temperature = sense.get_temperature()
 
-def speak():
-    message= 'Alert! Face Detected'
-    tts=gTTS(text=message, lang="en")
-    tts.save("TTSaudio.mp3")
-    os.system("mpg321 TTSaudio.mp3")
+while True:
+    p = sense.get_pressure()
+    t = sense.get_temperature()
+    if math.abs(p-pressure) > 1 or math.abs(t-temperature) > 1:
+        break
+    sleep(1)
+
         
 picam2.start()
 
