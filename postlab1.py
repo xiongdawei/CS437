@@ -16,11 +16,10 @@ while True:
         if event.action == "pressed":
             sense.clear()
             break
-        if event.direction == "up":
+        elif event.direction == "up":
             sense.clear()
             for i in range(0, y):
                 sense.set_pixel(x, i, color)
-            sense.clear(color)
         elif event.direction == "down":
             sense.clear()
             for i in range(y, 8):
