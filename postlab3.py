@@ -57,7 +57,6 @@ while True:
     faces=faceCascade.detectMultiScale(frameGray,1.3,5)
     if len(faces) > 0:
         print("Number of faces is " + str(len(faces)))
-        speak()
     for face in faces:
         x,y,w,h = face
         cv2.rectangle(frame, (x,y), (x+w, y+h), (255,0,0),3)
