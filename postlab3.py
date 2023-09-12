@@ -3,7 +3,6 @@ import datetime
 import math
 
 import numpy as np
-import time
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
 from picamera2.outputs import CircularOutput
@@ -42,9 +41,10 @@ temperature = sense.get_temperature()
 while True:
     p = sense.get_pressure()
     t = sense.get_temperature()
-    if math.abs(p-pressure) > 1 or math.abs(t-temperature) > 1:
+    if abs(p-pressure) > 1 or abs(t-temperature) > 1:
+        print("break")
         break
-    sleep(1)
+    time.sleep(1)
 
         
 picam2.start()
