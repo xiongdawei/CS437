@@ -86,4 +86,22 @@ while True:
     
 cv2.destroyAllWindows()
 
-
+Scapy
+>> capture = sniff() Press Ctrl+C
+>> capture.summary()
+🙂
+from sense_hat import SenseHat import socket
+import fcntl
+import struct
+import time
+#Sleeps for the network to connect before we try printing out the address
+time.sleep(10)
+def get_ip_address(ifname):
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, # SIOCGIFADDR
+        struct.pack('256s', bytes(ifname[:15], 'utf-8')))[20:24])
+# More code on the next page...
+sense = SenseHat()
+sense.clear()
+ip = get_ip_address('wlan0')
+sense.show_message(ip)
