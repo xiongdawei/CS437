@@ -1,3 +1,4 @@
+import asyncio
 import csv
 from datetime import datetime
 from scapy.all import *
@@ -5,7 +6,8 @@ import time
 import numpy as np
 import time
 
-from IMUCollect import imu_collect
+from IMUCollect import collect_imu_data, create_imu_file, record_joystick, sense
+from color_display import display_rssi
 
 """
 Run monitor_mode.sh first to set up the network adapter to monitor mode and to
@@ -15,7 +17,7 @@ of the device sending the packets.
 """
 
 # Variables to be modified
-dev_mac = "e4:5f:01:d4:9f:f9"  # Assigned transmitter MAC
+dev_mac = "e4:5f:01:d4:9d:ce"  # Assigned transmitter MAC
 iface_n = "wlan1"  # Interface for network adapter
 duration = 30  # Number of seconds to sniff for
 file_name = "IMU/rssi.csv"  # Name of CSV file where RSSI values are stored
@@ -27,6 +29,10 @@ def create_rssi_file():
     with open(file_name, "w", encoding="UTF8") as f:
         writer = csv.writer(f)
         writer.writerow(header)
+
+def create_joystick_file():
+    with open("IMU/joystick.csv", "w") as f:
+        pass
 
 
 def captured_packet_callback(pkt):
@@ -53,16 +59,37 @@ def captured_packet_callback(pkt):
             csv_writer.writerow([timestamp, cur_dict["mac_1"], cur_dict["mac_2"], cur_dict["rssi"]])
 
 
+async def async_while_loop(collection_time: int):
+    # Create a async coroutine that runs for 30 seconds
+    start = time.time()
+    # location_marked = False
+    while (time.time() - start) < collection_time:
+        accel, gyro, mag, timestamp = await collect_imu_data()
+        joystick = await record_joystick()
+        if joystick:
+            with open("IMU/joystick.csv", mode = "a", newline='') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow([timestamp, joystick])
+        await display_rssi()
+
+
 if __name__ == "__main__":
     create_rssi_file()
+    create_joystick_file()
+    create_imu_file()
 
     t = AsyncSniffer(iface=iface_n, prn=captured_packet_callback, store=0)
     t.daemon = True
     t.start()
     
     start_date_time = datetime.now().strftime("%d/%m/%Y,%H:%M:%S.%f") #Get current date and time
-    imu_collect(duration)
+
+    # Run imu_collect and display_rssi_color concurrently
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(async_while_loop(duration))
 
     t.stop()
+
+    sense.clear()
 
     print("Start Time: ", start_date_time)

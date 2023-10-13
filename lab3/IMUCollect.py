@@ -30,20 +30,48 @@ async def collect_imu_data():
         csv_writer.writerow([timestamp, accel['x'], accel['y'], accel['z'], gyro['x'], gyro['y'], gyro['z'], mag['x'], mag['y'], mag['z']])
 
     return accel, gyro, mag, timestamp 
+
+
+async def record_joystick():
+    for event in sense.stick.get_events():
+        if event.action =="pressed": ## check if the joystick was pressed
+            if event.direction=="middle":
+                sense.show_letter("M",text_colour=(255,255,255))
+                return "middle"
+            elif event.direction=="up":
+                sense.show_letter("U",text_colour=(255,255,255))
+                return "up"
+            elif event.direction=="down":
+                sense.show_letter("D",text_colour=(255,255,255))
+                return "down"
+            elif event.direction=="left":
+                sense.show_letter("L",text_colour=(255,255,255))
+                return "left"
+            elif event.direction=="right":
+                sense.show_letter("R",text_colour=(255,255,255))
+                return "right"
+    return ""
     
 
 async def imu_collect_loop(collection_time: int):
     # Create a async coroutine that runs for 30 seconds
     start = time.time()
+    location_marked = False
     while (time.time() - start) < collection_time:
         accel, gyro, mag, timestamp = await collect_imu_data()
+        if not location_marked:
+            if await record_joystick():
+                location_marked = True
+                with open("IMU/joystick.csv", mode = "w", newline='') as csv_file:
+                    csv_writer = csv.writer(csv_file)
+                    csv_writer.writerow([timestamp])
 
 def imu_collect(collection_time: int):
     # Create a loop that runs the async coroutine
     create_imu_file()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(imu_collect_loop(collection_time))
-    loop.close()
+    # loop.close()
 
 if __name__ == "__main__":
-    imu_collect(10)
+    imu_collect(20)
