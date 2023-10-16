@@ -19,7 +19,7 @@ of the device sending the packets.
 # Variables to be modified
 dev_mac = "e4:5f:01:d4:9d:ce"  # Assigned transmitter MAC
 iface_n = "wlan1"  # Interface for network adapter
-duration = 30  # Number of seconds to sniff for
+duration = 60  # Number of seconds to sniff for
 file_name = "IMU/rssi.csv"  # Name of CSV file where RSSI values are stored
 
 
@@ -56,13 +56,13 @@ def captured_packet_callback(pkt):
     if pkt.haslayer(Dot11) and cur_dict["mac_2"] == dev_mac:
         with open(file_name, mode = "a", newline='') as csv_file:
             csv_writer = csv.writer(csv_file)
-            csv_writer.writerow([timestamp, cur_dict["mac_1"], cur_dict["mac_2"], cur_dict["rssi"]])
-
+            csv_writer.writerow([timestamp, cur_dict["mac_1"], cur_dict["mac_2"], cur_dict["rssi"]])     
 
 async def async_while_loop(collection_time: int):
     # Create a async coroutine that runs for 30 seconds
     start = time.time()
     # location_marked = False
+    imu_data_cnt = 0
     while (time.time() - start) < collection_time:
         accel, gyro, mag, timestamp = await collect_imu_data()
         joystick = await record_joystick()
@@ -70,6 +70,13 @@ async def async_while_loop(collection_time: int):
             with open("IMU/joystick.csv", mode = "a", newline='') as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow([timestamp, joystick])
+
+        imu_data_cnt += 1
+        if imu_data_cnt == 25:
+            # Calibration complete
+            sense.show_letter("C")
+
+        ### Postlab 3
         await display_rssi()
 
 
