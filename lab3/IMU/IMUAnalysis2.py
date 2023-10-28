@@ -76,29 +76,16 @@ def read_and_process_joystick_data():
         joystick_data = f.readlines()
         # joystick_data: [timestamp, direction]
         # Group by direction
-        up_down = []
-        left_right = []
+        joystick_data = [data.split(",") for data in joystick_data]
+        joystick_index = []
         for data in joystick_data:
-            direction = data.split(",")[1].strip()
-            print(direction)
-            if direction == "up" or direction == "down":
-                up_down.append(data)
-            elif direction == "left" or direction == "right":
-                left_right.append(data)
-
-        # Find index in timestamp that fits in each timestamp in joystick_data
-        up_down_index = []
-        left_right_index = []
-        for data in up_down:
-            up_down_index.append(np.argmin(np.abs(timestamp - float(data.split(",")[0]))))
-        for data in left_right:
-            left_right_index.append(np.argmin(np.abs(timestamp - float(data.split(",")[0]))))
-    return up_down, left_right, up_down_index, left_right_index
+            joystick_index.append(np.argmin(np.abs(timestamp - float(data[0]))))
+    return joystick_data, joystick_index
 
 
 def read_step_data():
-    with open("peaks.csv", "r") as f:
-        step_data = f.readlines()[1:]
+    with open("steps.csv", "r") as f:
+        step_data = f.readlines()
         # step_data: [timestamp, magnitude]
         step_index = []
         # Find index in IMU data timestamp that is closest to each timestamp in step_data
@@ -120,14 +107,14 @@ def calculate_velocity_and_position(timestamp, x_calib, y_calib, z_calib):
     dt = (timestamp[len(timestamp)-1] - timestamp[0]) / len(timestamp)
 
     ### Postlab 1
-    x_grid_size = 1.22
-    y_grid_size = 1.22
+    x_grid_size = 1.6
+    y_grid_size = 0.56 * 4
     max_step_size = 0.8
     landmark_x = 0  # We take +X as first step
     landmark_y = 0
 
     # Read and process joystick data
-    up_down, left_right, up_down_index, left_right_index = read_and_process_joystick_data()
+    joystick_data, joystick_index = read_and_process_joystick_data()
 
     # Read and process step data
     step_data, step_index, max_mag, min_mag = read_step_data()
@@ -156,57 +143,89 @@ def calculate_velocity_and_position(timestamp, x_calib, y_calib, z_calib):
     previous_click_idx = 0
 
     step_idx = 0
+    joystick_idx = 0
 
     for i in range(len(y_vel)-1):
-        # Prioritize joystick data over step data
-        # so process joystick first
-        # if step_idx < len(step_index) and i == step_index[step_idx]:
-        #     step_magnitude = float(step_data[step_idx].split(",")[1].strip())
-        #     if current_click_direction == "right":
-        #         # Positive X
-        #         landmark_x += interpolate_step_magnitude(step_magnitude)
-        #     elif current_click_direction == "left":
-        #         # Negative X
-        #         landmark_x -= interpolate_step_magnitude(step_magnitude)
-        #     elif current_click_direction == "up":
-        #         # Positive Y
-        #         landmark_y += interpolate_step_magnitude(step_magnitude)
-        #     elif current_click_direction == "down":
-        #         # Negative Y
-        #         landmark_y -= interpolate_step_magnitude(step_magnitude)
+        if joystick_idx < len(joystick_index) and i == joystick_index[joystick_idx]:
+            direction = joystick_data[joystick_idx][1].strip()
+            if direction == "up":
+                # Turn left
+                if current_click_direction == "right":
+                    current_click_direction = "up"
+                elif current_click_direction == "up":
+                    current_click_direction = "left"
+                elif current_click_direction == "left":
+                    current_click_direction = "down"
+                elif current_click_direction == "down":
+                    current_click_direction = "right"
+            elif direction == "down":
+                # Turn right
+                if current_click_direction == "right":
+                    current_click_direction = "down"
+                elif current_click_direction == "down":
+                    current_click_direction = "left"
+                elif current_click_direction == "left":
+                    current_click_direction = "up"
+                elif current_click_direction == "up":
+                    current_click_direction = "right"
+            elif direction == "left": 
+                # 180 degree turn
+                if current_click_direction == "right":
+                    current_click_direction = "left"
+                elif current_click_direction == "left":
+                    current_click_direction = "right"
+                elif current_click_direction == "up":
+                    current_click_direction = "down"
+                elif current_click_direction == "down":
+                    current_click_direction = "up"
+            joystick_idx += 1
+            current_click_direction = direction
+
+        if step_idx < len(step_index) and i == step_index[step_idx]:
+            step_idx += 1
+            step_magnitude = float(step_data[step_idx].split(",")[1].strip())
+            if current_click_direction == "right":
+                # Positive X
+                landmark_x += interpolate_step_magnitude(step_magnitude)
+            elif current_click_direction == "left":
+                # Negative X
+                landmark_x -= interpolate_step_magnitude(step_magnitude)
+            elif current_click_direction == "up":
+                # Positive Y
+                landmark_y += interpolate_step_magnitude(step_magnitude)
+            elif current_click_direction == "down":
+                # Negative Y
+                landmark_y -= interpolate_step_magnitude(step_magnitude)
+            x[-1] = landmark_x
+            y[-1] = landmark_y
+        # if up_down_idx < len(up_down_index) and i == up_down_index[up_down_idx]:
+        #     direction = up_down[up_down_idx].split(",")[1].strip()
+        #     if direction == "up":
+        #         landmark_y += y_grid_size
+        #         print(f"Direction UP set landmark to ({landmark_x}, {landmark_y})")
+        #     elif direction == "down":
+        #         landmark_y -= y_grid_size
+        #         print(f"Direction DOWN set landmark to ({landmark_x}, {landmark_y})")
+        #     up_down_idx += 1
+        #     up_down_clicked = True
+        #     current_click_direction = "up_down"
+        #     # previous_click_idx = i
         #     x[-1] = landmark_x
         #     y[-1] = landmark_y
-        #     step_idx += 1
-
-        if up_down_idx < len(up_down_index) and i == up_down_index[up_down_idx]:
-            direction = up_down[up_down_idx].split(",")[1].strip()
-            if direction == "up":
-                landmark_y += y_grid_size
-                print(f"Direction UP set landmark to ({landmark_x}, {landmark_y})")
-            elif direction == "down":
-                landmark_y -= y_grid_size
-                print(f"Direction DOWN set landmark to ({landmark_x}, {landmark_y})")
-            up_down_idx += 1
-            up_down_clicked = True
-            current_click_direction = "up_down"
-            # previous_click_idx = i
-            x[-1] = landmark_x
-            y[-1] = landmark_y
-        if left_right_idx < len(left_right_index) and i == left_right_index[left_right_idx]:
-            direction = left_right[left_right_idx].split(",")[1].strip()
-            if direction == "left":
-                landmark_x -= x_grid_size
-                print(f"Direction LEFT set landmark to ({landmark_x}, {landmark_y})")
-            elif direction == "right":
-                landmark_x += x_grid_size
-                print(f"Direction RIGHT set landmark to ({landmark_x}, {landmark_y})")
-            left_right_idx += 1
-            left_right_clicked = True
-            current_click_direction = "left_right"
-            # previous_click_idx = i
-            x[-1] = landmark_x
-            y[-1] = landmark_y
-            # current_click_direction = direction
+        # if left_right_idx < len(left_right_index) and i == left_right_index[left_right_idx]:
+        #     direction = left_right[left_right_idx].split(",")[1].strip()
+        #     if direction == "left":
+        #         landmark_x -= x_grid_size
+        #         print(f"Direction LEFT set landmark to ({landmark_x}, {landmark_y})")
+        #     elif direction == "right":
+        #         landmark_x += x_grid_size
+        #         print(f"Direction RIGHT set landmark to ({landmark_x}, {landmark_y})")
+        #     left_right_idx += 1
+        #     left_right_clicked = True
+        #     current_click_direction = "left_right"
+        #     # previous_click_idx = i
+        #     x[-1] = landmark_x
+        #     y[-1] = landmark_y
 
         y.append(y[-1] + dt * y_vel[i])
         x.append(x[-1] + dt * x_vel[i])
@@ -384,18 +403,9 @@ def plot_color_coded_location(timestamp, x, y, rssi):
 
     plt.show()
 
-    # plt.scatter(xg, yg, c=interpolated_grid, marker='s', cmap=plt.cm.coolwarm)
-    # cbar = plt.colorbar()
-    # cbar.set_label('RSSI')
-    # plt.show()
-
-    # Plot a contour plot of interpolated data, overlay with scatter plot of (x, y) coordinate
-    plt.contourf(x_grid, y_grid, interpolated_grid.reshape(x_grid.shape), 20, cmap="viridis")
-    # Scatter plot x, y with transparent
-    plt.scatter(x, y, c=rssi, marker='o', alpha=0.3)
-    plt.colorbar()
-    plt.xlabel('X')
-    plt.ylabel('Y')
+    plt.scatter(xg, yg, c=interpolated_grid, marker='s', cmap=plt.cm.coolwarm)
+    cbar = plt.colorbar()
+    cbar.set_label('RSSI')
     plt.show()
 
     

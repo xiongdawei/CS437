@@ -120,8 +120,8 @@ def calculate_velocity_and_position(timestamp, x_calib, y_calib, z_calib):
     dt = (timestamp[len(timestamp)-1] - timestamp[0]) / len(timestamp)
 
     ### Postlab 1
-    x_grid_size = 1.22
-    y_grid_size = 1.22
+    x_grid_size = 1.6
+    y_grid_size = 0.56 * 4
     max_step_size = 0.8
     landmark_x = 0  # We take +X as first step
     landmark_y = 0
@@ -152,7 +152,8 @@ def calculate_velocity_and_position(timestamp, x_calib, y_calib, z_calib):
     left_right_idx = 0
     up_down_clicked = False
     left_right_clicked = False
-    current_click_direction = "right"
+    current_click_direction = "left-right"
+    current_direction = "right"
     previous_click_idx = 0
 
     step_idx = 0
@@ -160,23 +161,23 @@ def calculate_velocity_and_position(timestamp, x_calib, y_calib, z_calib):
     for i in range(len(y_vel)-1):
         # Prioritize joystick data over step data
         # so process joystick first
-        # if step_idx < len(step_index) and i == step_index[step_idx]:
-        #     step_magnitude = float(step_data[step_idx].split(",")[1].strip())
-        #     if current_click_direction == "right":
-        #         # Positive X
-        #         landmark_x += interpolate_step_magnitude(step_magnitude)
-        #     elif current_click_direction == "left":
-        #         # Negative X
-        #         landmark_x -= interpolate_step_magnitude(step_magnitude)
-        #     elif current_click_direction == "up":
-        #         # Positive Y
-        #         landmark_y += interpolate_step_magnitude(step_magnitude)
-        #     elif current_click_direction == "down":
-        #         # Negative Y
-        #         landmark_y -= interpolate_step_magnitude(step_magnitude)
-        #     x[-1] = landmark_x
-        #     y[-1] = landmark_y
-        #     step_idx += 1
+        if step_idx < len(step_index) and i == step_index[step_idx]:
+            step_magnitude = float(step_data[step_idx].split(",")[1].strip())
+            if current_direction == "right":
+                # Positive X
+                landmark_x += interpolate_step_magnitude(step_magnitude)
+            elif current_direction == "left":
+                # Negative X
+                landmark_x -= interpolate_step_magnitude(step_magnitude)
+            elif current_direction == "up":
+                # Positive Y
+                landmark_y += interpolate_step_magnitude(step_magnitude)
+            elif current_direction == "down":
+                # Negative Y
+                landmark_y -= interpolate_step_magnitude(step_magnitude)
+            x[-1] = landmark_x
+            y[-1] = landmark_y
+            step_idx += 1
 
         if up_down_idx < len(up_down_index) and i == up_down_index[up_down_idx]:
             direction = up_down[up_down_idx].split(",")[1].strip()
@@ -189,6 +190,7 @@ def calculate_velocity_and_position(timestamp, x_calib, y_calib, z_calib):
             up_down_idx += 1
             up_down_clicked = True
             current_click_direction = "up_down"
+            current_direction = direction
             # previous_click_idx = i
             x[-1] = landmark_x
             y[-1] = landmark_y
@@ -203,10 +205,10 @@ def calculate_velocity_and_position(timestamp, x_calib, y_calib, z_calib):
             left_right_idx += 1
             left_right_clicked = True
             current_click_direction = "left_right"
+            current_direction = direction
             # previous_click_idx = i
             x[-1] = landmark_x
             y[-1] = landmark_y
-            # current_click_direction = direction
 
         y.append(y[-1] + dt * y_vel[i])
         x.append(x[-1] + dt * x_vel[i])
@@ -326,6 +328,9 @@ def plot_color_coded_location(timestamp, x, y, rssi):
     max_rssi_grid_index = np.unravel_index(np.argmax(rssi_grid, axis=None), rssi_grid.shape)
     max_rssi_grid_x = x_grid[max_rssi_grid_index]
     max_rssi_grid_y = y_grid[max_rssi_grid_index]
+    # Find the point with highest RSSI value withint the max average-RSSI grid
+    # max_rssi_grid_index = np.unravel_index(np.argmax(rssi_grid[0:5, 0:5], axis=None), rssi_grid[0:5, 0:5].shape)
+
     plt.scatter(max_rssi_grid_x, max_rssi_grid_y, c='red', marker='x')
     plt.annotate('grid RSSI', (max_rssi_grid_x, max_rssi_grid_y))
 
@@ -391,8 +396,7 @@ def plot_color_coded_location(timestamp, x, y, rssi):
 
     # Plot a contour plot of interpolated data, overlay with scatter plot of (x, y) coordinate
     plt.contourf(x_grid, y_grid, interpolated_grid.reshape(x_grid.shape), 20, cmap="viridis")
-    # Scatter plot x, y with transparent
-    plt.scatter(x, y, c=rssi, marker='o', alpha=0.3)
+    plt.scatter(x, y, c=rssi, marker='o')
     plt.colorbar()
     plt.xlabel('X')
     plt.ylabel('Y')

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 # Load IMU data from CSV
-data = pd.read_csv('IMU/imu_data.csv')
+data = pd.read_csv('imu_data.csv')
 
 # Extract relevant accelerometer data (assuming columns 'accel_x', 'accel_y', 'accel_z')
 data = data[50:]
@@ -59,7 +59,7 @@ for i in peaks:
     peaks_timestamp.append(a[i])
     peaks_accel_magnitude.append(filtered_accel_magnitude[i])
 df = pd.DataFrame({'timestamp': peaks_timestamp, 'accel_magnitude': peaks_accel_magnitude})
-df.to_csv('IMU/peaks.csv', index=False)
+df.to_csv('peaks.csv', index=False)
 
 
 
