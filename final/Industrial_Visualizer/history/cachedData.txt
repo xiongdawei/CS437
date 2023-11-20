@@ -1,3 +1,0 @@
-IWRL6432
-IWRL6432 Out of Box Demo
-C:/ti/MMWAVE_L_SDK_05_03_00_02/examples/mmw_demo/motion_and_presence_detection/profiles/xwrL64xx-evm/MotionDetect.cfg
